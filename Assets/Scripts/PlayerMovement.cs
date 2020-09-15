@@ -3,6 +3,11 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+public enum AngleDirection
+{
+    Clockwise = 1,
+    CounterClockwise = -1
+}
 public struct AnchorPos
 {
     public Vector2 Position;
@@ -27,10 +32,13 @@ public class PlayerMovement : MonoBehaviour
     public Camera mainCamera;
     public Transform hingeAnchorTransform;
     public LineRenderer lineRenderer;
+    public Vector2 angleZeroing = new Vector2(1f, 0f);
 
     public float maxRaycastDistance;
     public float valueCloseToZero = 0.1f;
     private List<AnchorPos> _ropePoints = new List<AnchorPos>();
+    public List<Vector2> ropePositions = new List<Vector2>();
+    public List<int> ropeAngles = new List<int>();
 
     private bool _raycastOnFixedUpdate = false;
     private Vector2 _displayClosestPoint = Vector2.zero;
@@ -93,11 +101,11 @@ public class PlayerMovement : MonoBehaviour
             {
                 var closestPoint = GetClosestPoint(GetColliderPoints(hit.collider), hit.point);
                 _displayClosestPoint = closestPoint;
-                
-                if (_ropePoints[_ropePoints.Count - 1].Position != closestPoint &&
-                    closestPoint != Vector2.zero)
+
+                if (_ropePoints[_ropePoints.Count - 1].Position != closestPoint && closestPoint != Vector2.zero)
                 {
-                    _ropePoints.Add(new AnchorPos(closestPoint, 0));
+                    _ropePoints.Add(new AnchorPos(closestPoint,
+                        GetAngleDir(_ropePoints[_ropePoints.Count - 1].Position, closestPoint)));
                     hingeAnchorTransform.position = _ropePoints[_ropePoints.Count - 1].Position;
                     _playerDistanceJoint.distance -= Vector2.Distance(_ropePoints[_ropePoints.Count - 1].Position,
                         _ropePoints[_ropePoints.Count - 2].Position);
@@ -106,6 +114,7 @@ public class PlayerMovement : MonoBehaviour
         }
 
         HandleRopeUnwrap();
+        TransferVector2Positions();
     }
 
     private void HandleRopeUnwrap()
@@ -117,32 +126,11 @@ public class PlayerMovement : MonoBehaviour
 
         var anchorIndex = _ropePoints.Count - 2;
         var hingeIndex = _ropePoints.Count - 1;
-        var anchorPosition = _ropePoints[anchorIndex].Position;
-        var hingePosition = _ropePoints[hingeIndex].Position;
-        var hingeDir = hingePosition - anchorPosition;
-        var hingeAngle = Vector2.Angle(anchorPosition, hingeDir);
-        var playerDir = (Vector2) transform.position - anchorPosition;
-        var playerAngle = Vector2.Angle(anchorPosition, playerDir);
 
-        if (playerAngle < hingeAngle)
+        if (GetAngleDir(_ropePoints[anchorIndex].Position, _ropePoints[hingeIndex].Position) !=
+            _ropePoints[hingeIndex].AngleDir)
         {
-            if (_ropePoints[hingeIndex].AngleDir == 1)
-            {
-                UnwrapRopePosition(anchorIndex, hingeIndex);
-                return;
-            }
-
-            _ropePoints[hingeIndex] = new AnchorPos(_ropePoints[hingeIndex].Position, -1);
-        }
-        else
-        {
-            if (_ropePoints[hingeIndex].AngleDir == -1)
-            {
-                UnwrapRopePosition(anchorIndex, hingeIndex);
-                return;
-            }
-
-            _ropePoints[hingeIndex] = new AnchorPos(_ropePoints[hingeIndex].Position, 1);
+            UnwrapRopePosition(anchorIndex, hingeIndex);
         }
     }
 
@@ -163,8 +151,6 @@ public class PlayerMovement : MonoBehaviour
         //     return;
         // }
         // distanceSet = true;
-
-        print("Unwrapped rope");
     }
 
     private void SetLinePositions()
@@ -189,28 +175,28 @@ public class PlayerMovement : MonoBehaviour
 
     private Vector2[] GetColliderPoints(Collider2D collider2D)
     {
-        if (collider2D is BoxCollider2D)
+        if (collider2D is BoxCollider2D boxCollider2D)
         {
-            var boxCollider2D = collider2D as BoxCollider2D;
+            var boxCollider2DOffset = boxCollider2D.offset;
+            var boxCollider2DSize = boxCollider2D.size;
             
-            float top = boxCollider2D.offset.y + (boxCollider2D.size.y / 2f);
-            float btm = boxCollider2D.offset.y - (boxCollider2D.size.y / 2f);
-            float left = boxCollider2D.offset.x - (boxCollider2D.size.x / 2f);
-            float right = boxCollider2D.offset.x + (boxCollider2D.size.x / 2f);
+            var top = boxCollider2DOffset.y + (boxCollider2DSize.y / 2f);
+            var btm = boxCollider2DOffset.y - (boxCollider2DSize.y / 2f);
+            var left = boxCollider2DOffset.x - (boxCollider2DSize.x / 2f);
+            var right = boxCollider2DOffset.x + (boxCollider2DSize.x / 2f);
 
-            var transform = boxCollider2D.transform;
+            var boxCollider2DTransform = boxCollider2D.transform;
             var points = new Vector2[4];
 
-            points[0] = transform.TransformPoint(new Vector3(left, top, 0f));
-            points[1] = transform.TransformPoint(new Vector3(right, top, 0f));
-            points[2] = transform.TransformPoint(new Vector3(left, btm, 0f));
-            points[3] = transform.TransformPoint(new Vector3(right, btm, 0f));
+            points[0] = boxCollider2DTransform.TransformPoint(new Vector3(left, top, 0f));
+            points[1] = boxCollider2DTransform.TransformPoint(new Vector3(right, top, 0f));
+            points[2] = boxCollider2DTransform.TransformPoint(new Vector3(left, btm, 0f));
+            points[3] = boxCollider2DTransform.TransformPoint(new Vector3(right, btm, 0f));
 
             return points;
         }
-        else if (collider2D is PolygonCollider2D)
+        else if (collider2D is PolygonCollider2D polygonCollider2D)
         {
-            var polygonCollider2D = collider2D as PolygonCollider2D;
             return polygonCollider2D.points;
         }
         else
@@ -226,8 +212,7 @@ public class PlayerMovement : MonoBehaviour
         foreach (var point in points)
         {
             if (closestPoint == Vector2.zero ||
-                Vector2.Distance(closestPoint, mainPoint) >
-                Vector2.Distance(point, mainPoint))
+                Vector2.Distance(closestPoint, mainPoint) > Vector2.Distance(point, mainPoint))
             {
                 closestPoint = point;
             }
@@ -236,12 +221,31 @@ public class PlayerMovement : MonoBehaviour
         return closestPoint;
     }
 
+    private void TransferVector2Positions()
+    {
+        ropePositions.Clear();
+        ropeAngles.Clear();
+        foreach (var point in _ropePoints)
+        {
+            ropePositions.Add(point.Position);
+            ropeAngles.Add(point.AngleDir);
+        }
+    }
+
+    private int GetAngleDir(Vector2 anchor, Vector2 hinge)
+    {
+        return Vector2.SignedAngle(hinge - anchor,
+            (Vector2) transform.position - hinge) > 0
+            ? (int) AngleDirection.CounterClockwise
+            : (int) AngleDirection.Clockwise;
+    }
+
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.red;
         if (_displayClosestPoint != Vector2.zero)
         {
-            Gizmos.DrawSphere(_displayClosestPoint, 0.1f);
+            Gizmos.DrawSphere(_displayClosestPoint, 0.2f);
         }
     }
 }
