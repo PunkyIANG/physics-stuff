@@ -12,13 +12,18 @@ public class InputSystem : MonoBehaviour
     private Stopwatch stopwatch = new Stopwatch();
     private Dictionary<GameAction, QueueFP<InputChange>> inputQueue;
 
+    public delegate void InputEventHandler(GameAction action, InputChange inputChange);
+
+    public event InputEventHandler InputEvent = delegate(GameAction action, InputChange change) {  };
+    //empty event but hey at least it's not null
+
     void Start()
     {
         keybindManager = GetComponent<KeybindManager>();
         inputQueue = new Dictionary<GameAction, QueueFP<InputChange>>();
 
         //for each game action
-        //add an entry to inputqueue
+        //add an entry to inputQueue
         foreach (GameAction action in Enum.GetValues(typeof(GameAction)))
         {
             inputQueue.Add(action, new QueueFP<InputChange>());
@@ -42,15 +47,22 @@ public class InputSystem : MonoBehaviour
                 if (inputQueue[action].FrontPeek() == null ||
                     inputQueue[action].FrontPeek().Value != currEventType)
                 {
-                    inputQueue[action].Enqueue(new InputChange
+                    var inputChange = new InputChange
                     {
                         Value = currEventType,
                         Timestep = stopwatch.Elapsed
-                    });
+                    };
+                    
+                    inputQueue[action].Enqueue(inputChange);
+
+                    InputEvent(action, inputChange);
+                    
+                    //still kinda shitty that the system relies on the queue's last element for comparison
+                    //TODO: set the last input event as a separate variable 
 
                     //debug
-                    var lastEvent = inputQueue[action].FrontPeek();
-                    print(action + " " + lastEvent.Value + " " + lastEvent.Timestep);
+                    // var lastEvent = inputQueue[action].FrontPeek();
+                    // print(action + " " + lastEvent.Value + " " + lastEvent.Timestep);
                 }
             }
         }
@@ -65,7 +77,7 @@ public class InputChange
 
 public class QueueFP<T> : Queue<T>
 {
-    private T latestVar = default(T);   //kinda null but also supports non-null 
+    private T latestVar = default(T); //kinda null but also supports non-null // also kinda redundant
 
     public T FrontPeek()
     {
@@ -78,4 +90,3 @@ public class QueueFP<T> : Queue<T>
         base.Enqueue(item);
     }
 }
-
