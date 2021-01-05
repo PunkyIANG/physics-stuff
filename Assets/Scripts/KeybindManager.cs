@@ -10,8 +10,6 @@ public class KeybindManager : MonoBehaviour
 {
     public KeybindConfig currentConfig;
     private string configFilePath;
-    public delegate void ConfigReloadUpdateHandler();
-    public event ConfigReloadUpdateHandler ConfigReload;
 
     void Start()
     {
@@ -41,7 +39,6 @@ public class KeybindManager : MonoBehaviour
     public void SetKeybind(KeybindConfig newConfig)
     {
         currentConfig = newConfig;
-        ConfigReload?.Invoke(); //call other functions that depend on up-to-date configs
         SaveConfig();
     }
 

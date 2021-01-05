@@ -10,14 +10,11 @@ public class InputSystem : MonoBehaviour
 {
     public KeybindManager keybindManager;
     private Stopwatch stopwatch = new Stopwatch();
-    private TimeSpan previousTime;
-    private HashSet<KeyCode> usedKeys;
     private Dictionary<GameAction, QueueFP<InputChange>> inputQueue;
 
     void Start()
     {
         keybindManager = GetComponent<KeybindManager>();
-        keybindManager.ConfigReload += ReloadUsedKeys;
         inputQueue = new Dictionary<GameAction, QueueFP<InputChange>>();
 
         //for each game action
@@ -56,16 +53,6 @@ public class InputSystem : MonoBehaviour
                     print(action + " " + lastEvent.Value + " " + lastEvent.Timestep);
                 }
             }
-        }
-    }
-
-    void ReloadUsedKeys()
-    {
-        usedKeys = new HashSet<KeyCode>();
-
-        foreach (var keybind in keybindManager.currentConfig.keybinds)
-        {
-            usedKeys.Add(keybind.keyCode);
         }
     }
 }
