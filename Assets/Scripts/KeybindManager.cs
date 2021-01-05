@@ -13,7 +13,7 @@ public class KeybindManager : MonoBehaviour
 
     void Start()
     {
-        configFilePath = Application.dataPath + "inputConfig.cfg";
+        configFilePath = Application.dataPath + "/inputConfig.cfg";
         ReloadKeybindsConfig();
     }
 
@@ -47,7 +47,7 @@ public class KeybindManager : MonoBehaviour
     public void SaveConfig()
     {
         //save current config to file
-        File.WriteAllText(configFilePath, JsonUtility.ToJson(currentConfig));
+        File.WriteAllText(configFilePath, JsonUtility.ToJson(currentConfig, true));
     }
 }
 
@@ -60,6 +60,7 @@ public enum GameAction
     Hook
 }
 
+[Serializable]
 public class Keybind
 {
     public GameAction action;
