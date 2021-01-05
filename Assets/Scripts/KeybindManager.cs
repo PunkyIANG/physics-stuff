@@ -7,8 +7,10 @@ using UnityEngine;
 
 //keep this class persistent between scenes
 public class KeybindManager : MonoBehaviour {
-    private KeybindConfig currentConfig;
+    public KeybindConfig currentConfig;
     private string configFilePath;
+    public delegate void ConfigReloadUpdateHandler();
+    public event ConfigReloadUpdateHandler ConfigReload;
 
     void Start() {
         configFilePath = Application.dataPath + "inputConfig.cfg";
@@ -35,6 +37,7 @@ public class KeybindManager : MonoBehaviour {
 
     public void SetKeybind(KeybindConfig newConfig) {
         currentConfig = newConfig;
+        ConfigReload?.Invoke(); //call other functions that depend on up-to-date configs
         SaveConfig();
     }
 

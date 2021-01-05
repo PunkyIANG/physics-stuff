@@ -4,31 +4,75 @@ using System.Diagnostics;
 using System;
 using System.IO;
 using UnityEngine;
+using System.Linq;
 
 public class InputSystem : MonoBehaviour
 {
-    // public Queue<InputFrame<Vector2>> movementInputQueue = new Queue<InputFrame<Vector2>>();
-    
+    public KeybindManager keybindManager;
     private Stopwatch stopwatch = new Stopwatch();
     private TimeSpan previousTime;
+    private HashSet<KeyCode> usedKeys;
+    private Dictionary<GameAction,QueueFP<InputChange>> inputQueue;
 
     void Start()
     {
+        keybindManager = GetComponent<KeybindManager>();
+        keybindManager.ConfigReload += ReloadUsedKeys;
+        inputQueue = new Dictionary<GameAction, QueueFP<InputChange>>();
+
+        //for each game action
+        //add an entry to inputqueue
+        foreach(GameAction gameAction in Enum.GetValues(typeof(GameAction))) {
+            inputQueue.Add(gameAction, new QueueFP<InputChange>());
+        }
+
         stopwatch.Start();
     }
 
-    void Update()
-    {
-        
+    void OnGUI() {
+        if (Event.current.isKey && Event.current.keyCode != KeyCode.None) {
+            var currKeycode = Event.current.keyCode;
+            var currEventType = Event.current.type;
+
+            foreach(var keybind in keybindManager.currentConfig.keybinds
+                .Where(k => k.keyCode == currKeycode)
+                .Select(k => k.action)) 
+            {
+                if (inputQueue[keybind].FrontPeek().Value != currEventType) {
+                    inputQueue[keybind].Enqueue(new InputChange {
+                        Value = currEventType,
+                        Timestep = (float)stopwatch.ElapsedMilliseconds / 1000 
+                    });
+                }
+            }
+            print(currKeycode + " " + currEventType);
+        }
     }
 
-    void OnGUI() {
-        if (Event.current.ToString() != "Layout" && Event.current.ToString() != "repaint")
-            print(Event.current);
+    void ReloadUsedKeys() {
+        usedKeys = new HashSet<KeyCode>();
+        
+        foreach(var keybind in keybindManager.currentConfig.keybinds) {
+            usedKeys.Add(keybind.keyCode);
+        }
     }
 }
 
-public class InputFrame<T> {
-    public T Value {get; set; }
+public class InputChange {
+    public EventType Value { get; set; }
     public float Timestep { get; set; }
 }
+
+public class QueueFP<T> : Queue<T> {
+    private T latestVar;
+
+    public T FrontPeek() {
+        return latestVar;
+    }
+
+    public new void Enqueue(T item) {
+        latestVar = item;
+        base.Enqueue(item);
+    }
+}
+
