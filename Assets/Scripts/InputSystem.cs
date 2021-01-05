@@ -12,7 +12,7 @@ public class InputSystem : MonoBehaviour
     private Stopwatch stopwatch = new Stopwatch();
     private TimeSpan previousTime;
     private HashSet<KeyCode> usedKeys;
-    private Dictionary<GameAction,QueueFP<InputChange>> inputQueue;
+    private Dictionary<GameAction, QueueFP<InputChange>> inputQueue;
 
     void Start()
     {
@@ -22,55 +22,71 @@ public class InputSystem : MonoBehaviour
 
         //for each game action
         //add an entry to inputqueue
-        foreach(GameAction gameAction in Enum.GetValues(typeof(GameAction))) {
-            inputQueue.Add(gameAction, new QueueFP<InputChange>());
+        foreach (GameAction action in Enum.GetValues(typeof(GameAction)))
+        {
+            inputQueue.Add(action, new QueueFP<InputChange>());
+            inputQueue[action] = new QueueFP<InputChange>();
         }
 
         stopwatch.Start();
     }
 
-    void OnGUI() {
-        if (Event.current.isKey && Event.current.keyCode != KeyCode.None) {
+    void OnGUI()
+    {
+        if (Event.current.isKey && Event.current.keyCode != KeyCode.None)
+        {
             var currKeycode = Event.current.keyCode;
             var currEventType = Event.current.type;
 
-            foreach(var keybind in keybindManager.currentConfig.keybinds
+            foreach (var action in keybindManager.currentConfig.keybinds
                 .Where(k => k.keyCode == currKeycode)
-                .Select(k => k.action)) 
+                .Select(k => k.action))
             {
-                if (inputQueue[keybind].FrontPeek().Value != currEventType) {
-                    inputQueue[keybind].Enqueue(new InputChange {
+                if (inputQueue[action].FrontPeek() == null ||
+                    inputQueue[action].FrontPeek().Value != currEventType)
+                {
+                    inputQueue[action].Enqueue(new InputChange
+                    {
                         Value = currEventType,
-                        Timestep = (float)stopwatch.ElapsedMilliseconds / 1000 
+                        Timestep = (float)stopwatch.ElapsedMilliseconds / 1000
                     });
+
+                    //debug
+                    var lastEvent = inputQueue[action].FrontPeek();
+                    print(action + " " + lastEvent.Value + " " + lastEvent.Timestep);
                 }
             }
-            print(currKeycode + " " + currEventType);
         }
     }
 
-    void ReloadUsedKeys() {
+    void ReloadUsedKeys()
+    {
         usedKeys = new HashSet<KeyCode>();
-        
-        foreach(var keybind in keybindManager.currentConfig.keybinds) {
+
+        foreach (var keybind in keybindManager.currentConfig.keybinds)
+        {
             usedKeys.Add(keybind.keyCode);
         }
     }
 }
 
-public class InputChange {
+public class InputChange
+{
     public EventType Value { get; set; }
     public float Timestep { get; set; }
 }
 
-public class QueueFP<T> : Queue<T> {
-    private T latestVar;
+public class QueueFP<T> : Queue<T>
+{
+    private T latestVar = default(T);   //kinda null but also supports non-null 
 
-    public T FrontPeek() {
+    public T FrontPeek()
+    {
         return latestVar;
     }
 
-    public new void Enqueue(T item) {
+    public new void Enqueue(T item)
+    {
         latestVar = item;
         base.Enqueue(item);
     }
