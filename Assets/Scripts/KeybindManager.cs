@@ -14,10 +14,10 @@ public class KeybindManager : MonoBehaviour
     void Start()
     {
         configFilePath = Application.dataPath + "inputConfig.cfg";
-        ReloadConfig();
+        ReloadKeybindsConfig();
     }
 
-    private void ReloadConfig()
+    private void ReloadKeybindsConfig()
     {
         try
         {
@@ -33,18 +33,21 @@ public class KeybindManager : MonoBehaviour
     public void ResetKeybindsConfig()
     {
         //create default config object
+        var newConfig = new KeybindConfig();
+        currentConfig = newConfig;
         SaveConfig();
     }
 
-    public void SetKeybind(KeybindConfig newConfig)
+    public void SetKeybindsConfig(KeybindConfig otherConfig)
     {
-        currentConfig = newConfig;
+        currentConfig = otherConfig;
         SaveConfig();
     }
 
     public void SaveConfig()
     {
         //save current config to file
+        File.WriteAllText(configFilePath, JsonUtility.ToJson(currentConfig));
     }
 }
 
