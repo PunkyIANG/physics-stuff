@@ -6,47 +6,53 @@ using System;
 using UnityEngine;
 
 //keep this class persistent between scenes
-public class KeybindManager : MonoBehaviour {
+public class KeybindManager : MonoBehaviour
+{
     public KeybindConfig currentConfig;
     private string configFilePath;
     public delegate void ConfigReloadUpdateHandler();
     public event ConfigReloadUpdateHandler ConfigReload;
 
-    void Start() {
+    void Start()
+    {
         configFilePath = Application.dataPath + "inputConfig.cfg";
         ReloadConfig();
     }
 
     private void ReloadConfig()
     {
-        try 
+        try
         {
             var config = JsonUtility.FromJson<KeybindConfig>(File.ReadAllText(configFilePath));
-        } 
-        catch (Exception e) 
+        }
+        catch (Exception e)
         {
             print(e);
             ResetKeybindsConfig();
         }
     }
 
-    public void ResetKeybindsConfig() {
+    public void ResetKeybindsConfig()
+    {
         //create default config object
         SaveConfig();
     }
 
-    public void SetKeybind(KeybindConfig newConfig) {
+    public void SetKeybind(KeybindConfig newConfig)
+    {
         currentConfig = newConfig;
         ConfigReload?.Invoke(); //call other functions that depend on up-to-date configs
         SaveConfig();
     }
 
-    public void SaveConfig() {
+    public void SaveConfig()
+    {
         //save current config to file
     }
 }
 
-public enum GameAction {
+public enum GameAction
+{
     MoveUp,
     MoveDown,
     MoveLeft,
@@ -54,18 +60,21 @@ public enum GameAction {
     Hook
 }
 
-public class Keybind {
+public class Keybind
+{
     public GameAction action;
     public KeyCode keyCode;
 
-    public Keybind(GameAction action, KeyCode keyCode) {
+    public Keybind(GameAction action, KeyCode keyCode)
+    {
         this.action = action;
         this.keyCode = keyCode;
     }
 }
 
 [Serializable]
-public class KeybindConfig {
+public class KeybindConfig
+{
     public Keybind[] keybinds = new Keybind[] {
         new Keybind(GameAction.MoveUp, KeyCode.W),
         new Keybind(GameAction.MoveDown, KeyCode.S),

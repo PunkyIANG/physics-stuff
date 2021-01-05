@@ -48,7 +48,7 @@ public class InputSystem : MonoBehaviour
                     inputQueue[action].Enqueue(new InputChange
                     {
                         Value = currEventType,
-                        Timestep = (float)stopwatch.ElapsedMilliseconds / 1000
+                        Timestep = stopwatch.Elapsed
                     });
 
                     //debug
@@ -73,7 +73,7 @@ public class InputSystem : MonoBehaviour
 public class InputChange
 {
     public EventType Value { get; set; }
-    public float Timestep { get; set; }
+    public TimeSpan Timestep { get; set; }
 }
 
 public class QueueFP<T> : Queue<T>
