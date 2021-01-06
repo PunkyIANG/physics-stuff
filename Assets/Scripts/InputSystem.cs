@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using UnityEngine;
 using System.Linq;
+using Zenject;
 
 public class InputSystem : MonoBehaviour
 {
@@ -17,9 +18,12 @@ public class InputSystem : MonoBehaviour
     public event InputEventHandler InputEvent = delegate(GameAction action, InputChange change) {  };
     //empty event but hey at least it's not null
 
+    [Inject]
+    void Init(KeybindManager keybindManager) {
+        this.keybindManager = keybindManager;
+    }
     void Start()
     {
-        keybindManager = GetComponent<KeybindManager>();
         inputQueue = new Dictionary<GameAction, QueueFP<InputChange>>();
 
         //for each game action
