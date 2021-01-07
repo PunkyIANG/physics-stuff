@@ -68,8 +68,7 @@ public class InputSystem : MonoBehaviour
                     InputEvent(action, inputChange);
                     
                     //debug
-                    // var lastEvent = inputQueue[action].FrontPeek();
-                    // print(action + " " + lastEvent.Value + " " + lastEvent.Timestep);
+                    // print(action + " " + currEventType + " " + stopwatch.Elapsed);
                 }
             }
         }
