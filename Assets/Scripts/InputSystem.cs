@@ -10,8 +10,8 @@ using Zenject;
 public class InputSystem : MonoBehaviour
 {
     public KeybindManager keybindManager;
-    private Stopwatch stopwatch = new Stopwatch();
-    private Dictionary<GameAction, Queue<InputChange>> inputQueue;
+    public Stopwatch stopwatch = new Stopwatch();
+    public Dictionary<GameAction, Queue<InputChange>> inputQueue;
     private Dictionary<GameAction, EventType> lastEvent;
 
     public delegate void InputEventHandler(GameAction action, InputChange inputChange);
@@ -40,6 +40,8 @@ public class InputSystem : MonoBehaviour
         }
 
         stopwatch.Start();
+
+        print("Frequency: " + Stopwatch.Frequency + " " + Stopwatch.IsHighResolution);
     }
 
     void OnGUI()

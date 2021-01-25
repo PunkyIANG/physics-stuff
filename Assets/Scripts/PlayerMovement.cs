@@ -1,251 +1,109 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
-
-public enum AngleDirection
-{
-    Clockwise = 1,
-    CounterClockwise = -1
-}
-public struct AnchorPos
-{
-    public Vector2 Position;
-    public int AngleDir;
-
-    public AnchorPos(Vector2 position, int angleDir)
-    {
-        Position = position;
-        AngleDir = angleDir;
-    }
-}
+using Zenject;
 
 public class PlayerMovement : MonoBehaviour
 {
     // Start is called before the first frame update
 
-    public float speed;
+    [Inject]
+    public InputSystem inputSystem;
+
     public float acceleration;
     private Rigidbody2D _playerRb;
     public ForceMode2D mode;
-    private DistanceJoint2D _playerDistanceJoint;
-    public Camera mainCamera;
-    public Transform hingeAnchorTransform;
-    public LineRenderer lineRenderer;
-    public Vector2 angleZeroing = new Vector2(1f, 0f);
-
-    public float maxRaycastDistance;
-    public float valueCloseToZero = 0.1f;
-    private List<AnchorPos> _ropePoints = new List<AnchorPos>();
-    public List<Vector2> ropePositions = new List<Vector2>();
-    public List<int> ropeAngles = new List<int>();
-
-    private bool _raycastOnFixedUpdate = false;
-    private Vector2 _displayClosestPoint = Vector2.zero;
-
+    private Dictionary<GameAction, InputChange> _lastEvent;
+    private Dictionary<GameAction, Vector2> _eventDir;
     private void Start()
     {
+        _lastEvent = new Dictionary<GameAction, InputChange>();
         _playerRb = GetComponent<Rigidbody2D>();
-        _playerDistanceJoint = GetComponent<DistanceJoint2D>();
-        mainCamera = FindObjectOfType<Camera>();
+
+        foreach (GameAction action in Enum.GetValues(typeof(GameAction)))
+        {
+            _lastEvent.Add(action, new InputChange
+            {
+                Value = EventType.KeyUp,
+                Timestep = inputSystem.stopwatch.Elapsed
+            });
+        }
+
+        _eventDir = new Dictionary<GameAction, Vector2>();
+
+        _eventDir.Add(GameAction.MoveUp, Vector2.up);
+        _eventDir.Add(GameAction.MoveDown, Vector2.down);
+        _eventDir.Add(GameAction.MoveLeft, Vector2.left);
+        _eventDir.Add(GameAction.MoveRight, Vector2.right);
+
+        
     }
 
     // Update is called once per frame
-    private void Update()
-    {
-        ForceMovement();
-
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            _raycastOnFixedUpdate = true;
-        }
-
-        if (lineRenderer.enabled)
-        {
-            SetLinePositions();
-        }
-    }
-
     private void FixedUpdate()
     {
-        if (_raycastOnFixedUpdate)
-        {
-            var hit = Physics2D.Raycast(transform.position,
-                mainCamera.ScreenToWorldPoint(Input.mousePosition) - transform.position, maxRaycastDistance);
-
-            if (hit.collider != null && !_playerDistanceJoint.enabled)
-            {
-                _playerDistanceJoint.enabled = true; //turning on the rope
-                lineRenderer.enabled = true;
-
-                _playerDistanceJoint.distance = Vector2.Distance(hit.point, transform.position);
-                ;
-                _ropePoints.Add(new AnchorPos(hit.point, 0));
-                hingeAnchorTransform.position = _ropePoints[_ropePoints.Count - 1].Position;
-            }
-            else if (_playerDistanceJoint.enabled)
-            {
-                _playerDistanceJoint.enabled = false; //turning off the rope
-                lineRenderer.enabled = false;
-                _ropePoints.Clear();
-            }
-
-            _raycastOnFixedUpdate = false;
-        }
-        else if (_playerDistanceJoint.enabled)
-        {
-            RaycastHit2D hit = Physics2D.Raycast(transform.position, hingeAnchorTransform.position - transform.position,
-                Vector3.Magnitude(hingeAnchorTransform.position - transform.position) - valueCloseToZero);
-
-            if (hit.collider != null)
-            {
-                var closestPoint = GetClosestPoint(GetColliderPoints(hit.collider), hit.point);
-                _displayClosestPoint = closestPoint;
-
-                if (_ropePoints[_ropePoints.Count - 1].Position != closestPoint && closestPoint != Vector2.zero)
-                {
-                    _ropePoints.Add(new AnchorPos(closestPoint,
-                        GetAngleDir(_ropePoints[_ropePoints.Count - 1].Position, closestPoint)));
-                    hingeAnchorTransform.position = _ropePoints[_ropePoints.Count - 1].Position;
-                    _playerDistanceJoint.distance -= Vector2.Distance(_ropePoints[_ropePoints.Count - 1].Position,
-                        _ropePoints[_ropePoints.Count - 2].Position);
-                }
-            }
-        }
-
-        HandleRopeUnwrap();
-        TransferVector2Positions();
-    }
-
-    private void HandleRopeUnwrap()
-    {
-        if (_ropePoints.Count <= 1)
-        {
-            return;
-        }
-
-        var anchorIndex = _ropePoints.Count - 2;
-        var hingeIndex = _ropePoints.Count - 1;
-
-        if (GetAngleDir(_ropePoints[anchorIndex].Position, _ropePoints[hingeIndex].Position) !=
-            _ropePoints[hingeIndex].AngleDir)
-        {
-            UnwrapRopePosition(anchorIndex, hingeIndex);
-        }
-    }
-
-    private void UnwrapRopePosition(int anchorIndex, int hingeIndex)
-    {
-        // 1
-        var newAnchorPosition = _ropePoints[anchorIndex].Position;
-        _playerDistanceJoint.distance += Vector2.Distance(_ropePoints[hingeIndex].Position, newAnchorPosition);
-        _ropePoints.RemoveAt(hingeIndex);
-
-        // 2
-        hingeAnchorTransform.position = newAnchorPosition;
-        // distanceSet = false;
-        //
-        // // Set new rope distance joint distance for anchor position if not yet set.
-        // if (distanceSet)
-        // {
-        //     return;
-        // }
-        // distanceSet = true;
-    }
-
-    private void SetLinePositions()
-    {
-        var linePositions = new Vector3[_ropePoints.Count + 1];
-        lineRenderer.positionCount = _ropePoints.Count + 1;
-
-        for (int i = 0; i < _ropePoints.Count; i++)
-        {
-            linePositions[i] = _ropePoints[i].Position;
-        }
-
-        linePositions[_ropePoints.Count] = transform.position;
-        lineRenderer.SetPositions(linePositions);
+        ForceMovement();
     }
 
     private void ForceMovement()
     {
-        var inputMovement = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
-        _playerRb.AddForce(inputMovement.normalized * acceleration, mode);
-    }
+        // var inputMovement = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
+        // _playerRb.AddForce(inputMovement.normalized * acceleration, mode);
 
-    private Vector2[] GetColliderPoints(Collider2D collider2D)
-    {
-        if (collider2D is BoxCollider2D boxCollider2D)
+        var currentTimestep = inputSystem.stopwatch.Elapsed;
+        var targetVelocity = Vector2.zero;
+
+        foreach (var action in _eventDir.Keys)
         {
-            var boxCollider2DOffset = boxCollider2D.offset;
-            var boxCollider2DSize = boxCollider2D.size;
-            
-            var top = boxCollider2DOffset.y + (boxCollider2DSize.y / 2f);
-            var btm = boxCollider2DOffset.y - (boxCollider2DSize.y / 2f);
-            var left = boxCollider2DOffset.x - (boxCollider2DSize.x / 2f);
-            var right = boxCollider2DOffset.x + (boxCollider2DSize.x / 2f);
-
-            var boxCollider2DTransform = boxCollider2D.transform;
-            var points = new Vector2[4];
-
-            points[0] = boxCollider2DTransform.TransformPoint(new Vector3(left, top, 0f));
-            points[1] = boxCollider2DTransform.TransformPoint(new Vector3(right, top, 0f));
-            points[2] = boxCollider2DTransform.TransformPoint(new Vector3(left, btm, 0f));
-            points[3] = boxCollider2DTransform.TransformPoint(new Vector3(right, btm, 0f));
-
-            return points;
-        }
-        else if (collider2D is PolygonCollider2D polygonCollider2D)
-        {
-            return polygonCollider2D.points;
-        }
-        else
-        {
-            return null;
-        }
-    }
-
-    private Vector2 GetClosestPoint(Vector2[] points, Vector2 mainPoint)
-    {
-        var closestPoint = Vector2.zero;
-
-        foreach (var point in points)
-        {
-            if (closestPoint == Vector2.zero ||
-                Vector2.Distance(closestPoint, mainPoint) > Vector2.Distance(point, mainPoint))
+            while (inputSystem.inputQueue[action].Count != 0)
             {
-                closestPoint = point;
+                // print("stuff");
+
+                var currInput = inputSystem.inputQueue[action].Dequeue();
+                var lastInput = _lastEvent[action];
+
+                if (lastInput.Value == EventType.KeyDown
+                    && currInput.Value == EventType.KeyUp)
+                {
+                    targetVelocity += _eventDir[action] * GetDiff(currInput, lastInput) * acceleration;
+                }
+
+                _lastEvent[action] = currInput;
+            }
+
+            if (_lastEvent[action].Value == EventType.KeyDown)
+            {
+                targetVelocity += _eventDir[action]
+                    * GetDiff(currentTimestep, _lastEvent[action].Timestep)
+                    * acceleration;
+
+                _lastEvent[action] = new InputChange
+                {
+                    Value = EventType.KeyDown,
+                    Timestep = currentTimestep
+                };
             }
         }
 
-        return closestPoint;
-    }
-
-    private void TransferVector2Positions()
-    {
-        ropePositions.Clear();
-        ropeAngles.Clear();
-        foreach (var point in _ropePoints)
+        if (targetVelocity != Vector2.zero)
         {
-            ropePositions.Add(point.Position);
-            ropeAngles.Add(point.AngleDir);
+            _playerRb.AddForce(targetVelocity, mode);
+            // print("FORCE!");
         }
     }
 
-    private int GetAngleDir(Vector2 anchor, Vector2 hinge)
+    private float GetDiff(TimeSpan first, TimeSpan second)
     {
-        return Vector2.SignedAngle(hinge - anchor,
-            (Vector2) transform.position - hinge) > 0
-            ? (int) AngleDirection.CounterClockwise
-            : (int) AngleDirection.Clockwise;
+        var diffTicks = first.Ticks - second.Ticks;
+        var result = (float)(first.Ticks - second.Ticks) / Stopwatch.Frequency;
+        // print(diffTicks + " " + result);
+        return result;
     }
 
-    private void OnDrawGizmosSelected()
+    private float GetDiff(InputChange first, InputChange second)
     {
-        Gizmos.color = Color.red;
-        if (_displayClosestPoint != Vector2.zero)
-        {
-            Gizmos.DrawSphere(_displayClosestPoint, 0.2f);
-        }
+        return GetDiff(first.Timestep, second.Timestep);
     }
 }
