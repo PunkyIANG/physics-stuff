@@ -7,8 +7,6 @@ using Zenject;
 
 public class PlayerMovement : MonoBehaviour
 {
-    // Start is called before the first frame update
-
     [Inject]
     public InputSystem inputSystem;
 
@@ -41,7 +39,6 @@ public class PlayerMovement : MonoBehaviour
         
     }
 
-    // Update is called once per frame
     private void FixedUpdate()
     {
         ForceMovement();
@@ -49,9 +46,6 @@ public class PlayerMovement : MonoBehaviour
 
     private void ForceMovement()
     {
-        // var inputMovement = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
-        // _playerRb.AddForce(inputMovement.normalized * acceleration, mode);
-
         var currentTimestep = inputSystem.stopwatch.Elapsed;
         var targetVelocity = Vector2.zero;
 
@@ -59,8 +53,6 @@ public class PlayerMovement : MonoBehaviour
         {
             while (inputSystem.inputQueue[action].Count != 0)
             {
-                // print("stuff");
-
                 var currInput = inputSystem.inputQueue[action].Dequeue();
                 var lastInput = _lastEvent[action];
 
@@ -90,7 +82,6 @@ public class PlayerMovement : MonoBehaviour
         if (targetVelocity != Vector2.zero)
         {
             _playerRb.AddForce(targetVelocity, mode);
-            // print("FORCE!");
         }
     }
 
@@ -98,7 +89,6 @@ public class PlayerMovement : MonoBehaviour
     {
         var diffTicks = first.Ticks - second.Ticks;
         var result = (float)(first.Ticks - second.Ticks) / Stopwatch.Frequency;
-        // print(diffTicks + " " + result);
         return result;
     }
 

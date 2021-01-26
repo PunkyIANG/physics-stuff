@@ -29,7 +29,6 @@ public class RopeMovement : MonoBehaviour
     public Camera mainCamera;
     public Transform hingeAnchorTransform;
     public LineRenderer lineRenderer;
-    public Vector2 angleZeroing = new Vector2(1f, 0f);
 
     public float maxRaycastDistance;
     public float valueCloseToZero = 0.1f;
@@ -74,7 +73,7 @@ public class RopeMovement : MonoBehaviour
                 lineRenderer.enabled = true;
 
                 _playerDistanceJoint.distance = Vector2.Distance(hit.point, transform.position);
-                ;
+
                 _ropePoints.Add(new AnchorPos(hit.point, 0));
                 hingeAnchorTransform.position = _ropePoints[_ropePoints.Count - 1].Position;
             }
@@ -89,8 +88,9 @@ public class RopeMovement : MonoBehaviour
         }
         else if (_playerDistanceJoint.enabled)
         {
-            RaycastHit2D hit = Physics2D.Raycast(transform.position, hingeAnchorTransform.position - transform.position,
-                Vector3.Magnitude(hingeAnchorTransform.position - transform.position) - valueCloseToZero);
+            var raycastDir = hingeAnchorTransform.position - transform.position;
+            RaycastHit2D hit = Physics2D.Raycast(transform.position, raycastDir,
+                Vector3.Magnitude(raycastDir) - valueCloseToZero);
 
             if (hit.collider != null)
             {
@@ -150,8 +150,9 @@ public class RopeMovement : MonoBehaviour
 
     private void SetLinePositions()
     {
-        var linePositions = new Vector3[_ropePoints.Count + 1];
-        lineRenderer.positionCount = _ropePoints.Count + 1;
+        var linePositionsCount = _ropePoints.Count + 1;
+        var linePositions = new Vector3[linePositionsCount];
+        lineRenderer.positionCount = linePositionsCount;
 
         for (int i = 0; i < _ropePoints.Count; i++)
         {
@@ -168,7 +169,7 @@ public class RopeMovement : MonoBehaviour
         {
             var boxCollider2DOffset = boxCollider2D.offset;
             var boxCollider2DSize = boxCollider2D.size;
-            
+
             var top = boxCollider2DOffset.y + (boxCollider2DSize.y / 2f);
             var btm = boxCollider2DOffset.y - (boxCollider2DSize.y / 2f);
             var left = boxCollider2DOffset.x - (boxCollider2DSize.x / 2f);
@@ -190,6 +191,7 @@ public class RopeMovement : MonoBehaviour
         }
         else
         {
+            print("ERROR: unsupported collider type");
             return null;
         }
     }
@@ -197,12 +199,15 @@ public class RopeMovement : MonoBehaviour
     private Vector2 GetClosestPoint(Vector2[] points, Vector2 mainPoint)
     {
         var closestPoint = Vector2.zero;
+        float minDistance = float.MaxValue;
 
         foreach (var point in points)
         {
-            if (closestPoint == Vector2.zero ||
-                Vector2.Distance(closestPoint, mainPoint) > Vector2.Distance(point, mainPoint))
+            var pointDistance = Vector2.Distance(point, mainPoint);
+            if (minDistance == float.MaxValue ||
+                minDistance > pointDistance)
             {
+                minDistance = pointDistance;
                 closestPoint = point;
             }
         }
@@ -210,7 +215,7 @@ public class RopeMovement : MonoBehaviour
         return closestPoint;
     }
 
-    private void TransferVector2Positions()
+    private void TransferVector2Positions() //debug stuff
     {
         ropePositions.Clear();
         ropeAngles.Clear();
@@ -224,9 +229,9 @@ public class RopeMovement : MonoBehaviour
     private int GetAngleDir(Vector2 anchor, Vector2 hinge)
     {
         return Vector2.SignedAngle(hinge - anchor,
-            (Vector2) transform.position - hinge) > 0
-            ? (int) AngleDirection.CounterClockwise
-            : (int) AngleDirection.Clockwise;
+            (Vector2)transform.position - hinge) > 0
+            ? (int)AngleDirection.CounterClockwise
+            : (int)AngleDirection.Clockwise;
     }
 
     private void OnDrawGizmosSelected()
