@@ -48,6 +48,7 @@ public class PlayerMovement : MonoBehaviour
     {
         var currentTimestep = inputSystem.stopwatch.Elapsed;
         var targetVelocity = Vector2.zero;
+        int inputCount = 0;
 
         foreach (var action in _eventDir.Keys)
         {
@@ -59,30 +60,34 @@ public class PlayerMovement : MonoBehaviour
                 if (lastInput.Value == EventType.KeyDown
                     && currInput.Value == EventType.KeyUp)
                 {
-                    targetVelocity += _eventDir[action] * GetDiff(currInput, lastInput) * acceleration;
+                    targetVelocity += _eventDir[action] * (GetDiff(currInput, lastInput) * acceleration);
                 }
 
                 _lastEvent[action] = currInput;
+                inputCount++;
             }
 
             if (_lastEvent[action].Value == EventType.KeyDown)
             {
-                targetVelocity += _eventDir[action]
-                    * GetDiff(currentTimestep, _lastEvent[action].Timestep)
-                    * acceleration;
+                targetVelocity += _eventDir[action] * (GetDiff(currentTimestep, _lastEvent[action].Timestep) * acceleration);
 
                 _lastEvent[action] = new InputChange
                 {
                     Value = EventType.KeyDown,
                     Timestep = currentTimestep
                 };
+                inputCount++;
             }
         }
 
         if (targetVelocity != Vector2.zero)
         {
             _playerRb.AddForce(targetVelocity, mode);
+            
+            print("Input count: " + inputCount);
         }
+        
+        
     }
 
     private float GetDiff(TimeSpan first, TimeSpan second)

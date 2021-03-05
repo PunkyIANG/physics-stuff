@@ -23,7 +23,7 @@ public class InputSystem : MonoBehaviour
     void Init(KeybindManager keybindManager) {
         this.keybindManager = keybindManager;
     }
-    
+
     void Start()
     {
         inputQueue = new Dictionary<GameAction, Queue<InputChange>>();
