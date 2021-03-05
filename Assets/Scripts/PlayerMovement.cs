@@ -9,7 +9,6 @@ public class PlayerMovement : MonoBehaviour
 {
     [Inject]
     public InputSystem inputSystem;
-
     public float acceleration;
     private Rigidbody2D _playerRb;
     public ForceMode2D mode;
