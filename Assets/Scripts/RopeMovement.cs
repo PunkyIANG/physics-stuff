@@ -39,6 +39,8 @@ public class RopeMovement : MonoBehaviour
     private bool _raycastOnFixedUpdate = false;
     private Vector2 _displayClosestPoint = Vector2.zero;
 
+    private Vector2 previousPosition;
+
     private void Start()
     {
         _playerRb = GetComponent<Rigidbody2D>();
@@ -94,7 +96,9 @@ public class RopeMovement : MonoBehaviour
 
             if (hit.collider != null)
             {
-                var closestPoint = GetClosestPoint(GetColliderPoints(hit.collider), hit.point);
+                var closestPoint = GetClosestPoint(
+                    GetPointsFromTriangle(transform.position, hingeAnchorTransform.position, 
+                    previousPosition, GetColliderPoints(hit.collider)), hit.point);
                 _displayClosestPoint = closestPoint;
 
                 if (_ropePoints[_ropePoints.Count - 1].Position != closestPoint && closestPoint != Vector2.zero)
@@ -110,6 +114,8 @@ public class RopeMovement : MonoBehaviour
 
         HandleRopeUnwrap();
         TransferVector2Positions();
+
+        previousPosition = transform.position;
     }
 
     private void HandleRopeUnwrap()
@@ -196,7 +202,8 @@ public class RopeMovement : MonoBehaviour
         }
     }
 
-    private Vector2 GetClosestPoint(Vector2[] points, Vector2 mainPoint)
+    //TODO: redo this using angles
+    private Vector2 GetClosestPoint(List<Vector2> points, Vector2 mainPoint)
     {
         var closestPoint = Vector2.zero;
         float minDistance = float.MaxValue;
@@ -214,6 +221,35 @@ public class RopeMovement : MonoBehaviour
 
         return closestPoint;
     }
+
+    //TODO: reformat this
+    //could be optimized more, see https://blackpawn.com/texts/pointinpoly/
+    private List<Vector2> GetPointsFromTriangle(Vector2 a, Vector2 b, Vector2 c, Vector2[] points) {
+        var result = new List<Vector2>();
+
+        foreach(var point in points) {
+            //check triangle logic
+            if (SameSide(point, a, b, c) 
+                && SameSide(point, b, a, c)
+                && SameSide(point, b, a, c)) {
+                result.Add(point);
+            }
+        }
+
+        return result;
+    }
+
+    private bool SameSide(Vector2 p1, Vector2 p2, Vector2 a, Vector2 b) {
+        var cp1 = Vector3.Cross(b - a, p1 - a);
+        var cp2 = Vector3.Cross(b - a, p2 - a);
+
+        if (Vector3.Dot(cp1, cp2) >= 0) {
+            return true;
+        }
+
+        return false;
+    }
+
 
     private void TransferVector2Positions() //debug stuff
     {
